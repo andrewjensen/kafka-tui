@@ -23,7 +23,9 @@ fn main() {
     // println!("cluster summary:");
     // println!("{:#?}", cluster_summary);
 
-    let topics = cluster_summary.topics;
+    let mut topics = cluster_summary.topics;
+    topics.sort_by(|a, b| a.name.cmp(&b.name));
+
     // let topics = get_mock_topics();
 
     let mut siv = cursive::Cursive::default();
