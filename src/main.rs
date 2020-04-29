@@ -1,13 +1,12 @@
 use cursive::theme::Effect;
 use cursive::views::{Dialog, DummyView, LinearLayout, ScrollView, SelectView, TextView};
 use cursive::Cursive;
-use std::time::Duration;
 
 mod formatting;
 mod kafka;
 
 use formatting::format_padded;
-use kafka::{fetch_metadata, ClusterSummary, TopicSummary};
+use kafka::{fetch_metadata, TopicSummary};
 
 const CHARS_TOPIC_NAME: usize = 40;
 const CHARS_PARTITION_COUNT: usize = 11;
@@ -67,29 +66,6 @@ fn on_select_topic(s: &mut Cursive, _id: &str) {
         });
 
     s.add_layer(topic_view);
-}
-
-fn get_mock_topics() -> Vec<TopicSummary> {
-    vec![
-        TopicSummary {
-            name: "topic.one".to_string(),
-            partition_count: 10,
-            replica_count: 1,
-            offset_sum: 2_637,
-        },
-        TopicSummary {
-            name: "my_cool_topic.v2".to_string(),
-            partition_count: 50,
-            replica_count: 3,
-            offset_sum: 12_345_678,
-        },
-        TopicSummary {
-            name: "facts.from.the.legacy.system.v10".to_string(),
-            partition_count: 20,
-            replica_count: 3,
-            offset_sum: 41_737,
-        },
-    ]
 }
 
 fn format_cluster_summary(topic_count: usize, broker_count: usize) -> String {
