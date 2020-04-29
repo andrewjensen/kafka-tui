@@ -1,4 +1,5 @@
-use cursive::views::{Dialog, LinearLayout, ScrollView, SelectView, TextView};
+use cursive::theme::Effect;
+use cursive::views::{Dialog, DummyView, LinearLayout, ScrollView, SelectView, TextView};
 use cursive::Cursive;
 use std::time::Duration;
 
@@ -34,7 +35,13 @@ fn main() {
 
     let summary_view = Dialog::around(
         LinearLayout::vertical()
-            .child(TextView::new(format_headers()))
+            .child(TextView::new("Cluster").effect(Effect::Bold))
+            .child(TextView::new(format_cluster_summary(
+                topics.len(),
+                cluster_summary.brokers.len(),
+            )))
+            .child(DummyView)
+            .child(TextView::new(format_topic_list_headers()).effect(Effect::Bold))
             .child(ScrollView::new(
                 SelectView::new()
                     .with_all(
@@ -85,8 +92,12 @@ fn get_mock_topics() -> Vec<TopicSummary> {
     ]
 }
 
-fn format_headers() -> String {
-    let name_fmt = format_padded("Topic name", CHARS_TOPIC_NAME);
+fn format_cluster_summary(topic_count: usize, broker_count: usize) -> String {
+    format!("Topics: {}\nBrokers: {}", topic_count, broker_count)
+}
+
+fn format_topic_list_headers() -> String {
+    let name_fmt = format_padded("Topic", CHARS_TOPIC_NAME);
     let partitions_fmt = format_padded("Partitions", CHARS_PARTITION_COUNT);
     let replicas_fmt = format_padded("Replicas", CHARS_REPLICA_COUNT);
     let offsets_fmt = format_padded("Offsets", CHARS_SUM_OFFSETS);

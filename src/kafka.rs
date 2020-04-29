@@ -6,7 +6,15 @@ const DEFAULT_TIMEOUT_MS: u64 = 60_000;
 
 #[derive(Debug)]
 pub struct ClusterSummary {
+    pub brokers: Vec<BrokerSummary>,
     pub topics: Vec<TopicSummary>,
+}
+
+#[derive(Debug)]
+pub struct BrokerSummary {
+    pub id: i32,
+    pub host: String,
+    pub port: i32,
 }
 
 #[derive(Debug)]
@@ -37,15 +45,15 @@ pub fn fetch_metadata(brokers: &str) -> ClusterSummary {
     // println!("  Metadata broker name: {}", metadata.orig_broker_name());
     // println!("  Metadata broker id: {}\n", metadata.orig_broker_id());
 
-    // println!("Brokers:");
-    // for broker in metadata.brokers() {
-    //     println!(
-    //         "  Id: {}  Host: {}:{}  ",
-    //         broker.id(),
-    //         broker.host(),
-    //         broker.port()
-    //     );
-    // }
+    let brokers: Vec<BrokerSummary> = metadata
+        .brokers()
+        .iter()
+        .map(|broker| BrokerSummary {
+            id: broker.id(),
+            host: broker.host().to_string(),
+            port: broker.port(),
+        })
+        .collect();
 
     let topics: Vec<TopicSummary> = metadata
         .topics()
@@ -95,5 +103,8 @@ pub fn fetch_metadata(brokers: &str) -> ClusterSummary {
         })
         .collect();
 
-    ClusterSummary { topics: topics }
+    ClusterSummary {
+        brokers: brokers,
+        topics: topics,
+    }
 }
