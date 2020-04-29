@@ -1,4 +1,4 @@
-use cursive::views::{Dialog, LinearLayout, SelectView, TextView};
+use cursive::views::{Dialog, LinearLayout, ScrollView, SelectView, TextView};
 use cursive::Cursive;
 use std::time::Duration;
 
@@ -35,7 +35,7 @@ fn main() {
     let summary_view = Dialog::around(
         LinearLayout::vertical()
             .child(TextView::new(format_headers()))
-            .child(
+            .child(ScrollView::new(
                 SelectView::new()
                     .with_all(
                         topics
@@ -43,7 +43,7 @@ fn main() {
                             .map(|topic| (format_topic_summary(topic), "test")),
                     )
                     .on_submit(on_select_topic),
-            ),
+            )),
     )
     .title("Kafka");
 
