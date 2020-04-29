@@ -1,38 +1,30 @@
 use cursive::views::{Dialog, LinearLayout, SelectView, TextView};
 use cursive::Cursive;
-// use std::time::Duration;
+use std::time::Duration;
 
 mod formatting;
+mod kafka;
 
 use formatting::format_padded;
+use kafka::{fetch_metadata, ClusterSummary, TopicSummary};
 
-// mod kafka;
-
-// use kafka::print_metadata;
-
-const CHARS_TOPIC_NAME: usize = 30;
+const CHARS_TOPIC_NAME: usize = 40;
 const CHARS_PARTITION_COUNT: usize = 11;
 const CHARS_REPLICA_COUNT: usize = 9;
 const CHARS_SUM_OFFSETS: usize = 9;
 
-struct TopicSummary {
-    name: String,
-    partition_count: u32,
-    replica_count: u32,
-    offset_sum: u64,
-}
-
 fn main() {
-    // let brokers = "localhost:9092";
-    // let timeout = 60_000;
-    // print_metadata(
-    //     brokers,
-    //     None,
-    //     Duration::from_millis(timeout),
-    //     true,
-    // );
+    let brokers = "localhost:9092";
 
-    let topics = get_mock_topics();
+    println!("Fetching cluster metadata...");
+
+    let cluster_summary = fetch_metadata(brokers);
+
+    // println!("cluster summary:");
+    // println!("{:#?}", cluster_summary);
+
+    let topics = cluster_summary.topics;
+    // let topics = get_mock_topics();
 
     let mut siv = cursive::Cursive::default();
 

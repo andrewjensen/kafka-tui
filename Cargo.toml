@@ -8,4 +8,4 @@ edition = "2018"
 
 [dependencies]
 cursive = "0.14"
-# rdkafka = "0.23"
+rdkafka = "0.23"
