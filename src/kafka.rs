@@ -1,5 +1,6 @@
 use rdkafka::config::ClientConfig;
 use rdkafka::consumer::{BaseConsumer, Consumer};
+use std::collections::HashSet;
 use std::time::Duration;
 
 const DEFAULT_TIMEOUT_MS: u64 = 60_000;
@@ -21,13 +22,14 @@ pub struct BrokerSummary {
 pub struct TopicSummary {
     pub name: String,
     pub partition_count: usize,
-    pub replica_count: u32,
+    pub replica_count: usize,
     pub offset_sum: i64,
 }
 
 #[derive(Debug)]
 pub struct TopicDetails {
     pub name: String,
+    pub replicas: HashSet<i32>,
     pub partitions: Vec<TopicPartitionDetails>,
 }
 
@@ -73,35 +75,17 @@ pub fn fetch_cluster_metadata(brokers: &str) -> ClusterSummary {
                 sum + high_watermark
             });
 
-            // for partition in topic.partitions() {
-            //     println!(
-            //         "     Partition: {}  Leader: {}  Replicas: {:?}  ISR: {:?}  Err: {:?}",
-            //         partition.id(),
-            //         partition.leader(),
-            //         partition.replicas(),
-            //         partition.isr(),
-            //         partition.error()
-            //     );
-            //     if fetch_offsets {
-            //         let (low, high) = consumer
-            //             .fetch_watermarks(topic.name(), partition.id(), Duration::from_secs(1))
-            //             .unwrap_or((-1, -1));
-            //         println!(
-            //             "       Low watermark: {}  High watermark: {} (difference: {})",
-            //             low,
-            //             high,
-            //             high - low
-            //         );
-            //         message_count += high - low;
-            //     }
-            // }
-
-            // TODO: take the max of replicas for all partitions
+            let mut topic_replicas = HashSet::new();
+            for partition in topic.partitions() {
+                for replica in partition.replicas() {
+                    topic_replicas.insert(replica);
+                }
+            }
 
             TopicSummary {
                 name: topic.name().to_string(),
                 partition_count: topic.partitions().len(),
-                replica_count: 555,
+                replica_count: topic_replicas.len(),
                 offset_sum: offset_sum,
             }
         })
@@ -127,6 +111,13 @@ pub fn fetch_topic_details(brokers: &str, topic_name: &str) -> TopicDetails {
 
     let topic = metadata.topics().iter().next().unwrap();
 
+    let mut topic_replicas = HashSet::new();
+    for partition in topic.partitions() {
+        for replica in partition.replicas() {
+            topic_replicas.insert(*replica);
+        }
+    }
+
     let partitions: Vec<TopicPartitionDetails> = topic
         .partitions()
         .iter()
@@ -144,6 +135,7 @@ pub fn fetch_topic_details(brokers: &str, topic_name: &str) -> TopicDetails {
 
     TopicDetails {
         name: topic.name().to_string(),
+        replicas: topic_replicas,
         partitions: partitions,
     }
 }

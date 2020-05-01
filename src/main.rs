@@ -112,8 +112,7 @@ fn format_topic_summary(topic: &TopicSummary) -> String {
 // Topic View helpers
 
 fn format_topic_details(topic: &TopicDetails) -> String {
-    // TODO: get real numbers
-    let replica_count = 555;
+    let replica_count = topic.replicas.len();
     let partition_count = topic.partitions.len();
     let sum_offsets: i64 = topic
         .partitions
