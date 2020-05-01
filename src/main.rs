@@ -71,7 +71,9 @@ fn on_select_topic(s: &mut Cursive, topic_name: &str) {
             .child(TextView::new(format_topic_details(&topic)))
             .child(DummyView)
             .child(TextView::new(format_partition_list_headers()).effect(Effect::Bold))
-            .child(TextView::new(format_partition_list(&topic.partitions))),
+            .child(ScrollView::new(TextView::new(format_partition_list(
+                &topic.partitions,
+            )))),
     )
     .title(format!("Topic: {}", topic_name))
     .button("Back", |s| {
