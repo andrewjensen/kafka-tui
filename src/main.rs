@@ -6,27 +6,29 @@ mod formatting;
 mod kafka;
 
 use formatting::format_padded;
-use kafka::{fetch_metadata, TopicSummary};
+use kafka::{
+    fetch_cluster_metadata, fetch_topic_details, TopicDetails, TopicPartitionDetails, TopicSummary,
+};
 
+const MOCK_BROKERS: &str = "localhost:9092";
+
+// For summary view
 const CHARS_TOPIC_NAME: usize = 40;
 const CHARS_PARTITION_COUNT: usize = 11;
 const CHARS_REPLICA_COUNT: usize = 9;
 const CHARS_SUM_OFFSETS: usize = 9;
 
-fn main() {
-    let brokers = "localhost:9092";
+// For topic view
+const CHARS_PARTITION_ID: usize = 10;
+const CHARS_PARTITION_OFFSET: usize = 10;
 
+fn main() {
     println!("Fetching cluster metadata...");
 
-    let cluster_summary = fetch_metadata(brokers);
-
-    // println!("cluster summary:");
-    // println!("{:#?}", cluster_summary);
+    let cluster_summary = fetch_cluster_metadata(MOCK_BROKERS);
 
     let mut topics = cluster_summary.topics;
     topics.sort_by(|a, b| a.name.cmp(&b.name));
-
-    // let topics = get_mock_topics();
 
     let mut siv = cursive::Cursive::default();
 
@@ -46,7 +48,7 @@ fn main() {
                     .with_all(
                         topics
                             .iter()
-                            .map(|topic| (format_topic_summary(topic), "test")),
+                            .map(|topic| (format_topic_summary(topic), topic.name.clone())),
                     )
                     .on_submit(on_select_topic),
             )),
@@ -58,12 +60,23 @@ fn main() {
     siv.run();
 }
 
-fn on_select_topic(s: &mut Cursive, _id: &str) {
-    let topic_view = Dialog::around(TextView::new("TODO: topic view"))
-        .title("Topic: topic.name.here")
-        .button("Back", |s| {
-            s.pop_layer();
-        });
+// Summary View helpers
+
+fn on_select_topic(s: &mut Cursive, topic_name: &str) {
+    let topic = fetch_topic_details(MOCK_BROKERS, topic_name);
+
+    let topic_view = Dialog::around(
+        LinearLayout::vertical()
+            .child(TextView::new("Topic").effect(Effect::Bold))
+            .child(TextView::new(format_topic_details(&topic)))
+            .child(DummyView)
+            .child(TextView::new(format_partition_list_headers()).effect(Effect::Bold))
+            .child(TextView::new(format_partition_list(&topic.partitions))),
+    )
+    .title(format!("Topic: {}", topic_name))
+    .button("Back", |s| {
+        s.pop_layer();
+    });
 
     s.add_layer(topic_view);
 }
@@ -94,4 +107,41 @@ fn format_topic_summary(topic: &TopicSummary) -> String {
         "{} {} {} {}",
         name_fmt, partitions_fmt, replicas_fmt, offsets_fmt
     )
+}
+
+// Topic View helpers
+
+fn format_topic_details(topic: &TopicDetails) -> String {
+    // TODO: get real numbers
+    let replica_count = 555;
+    let partition_count = topic.partitions.len();
+    let sum_offsets: i64 = topic
+        .partitions
+        .iter()
+        .fold(0, |sum, partition| partition.offset + sum);
+    format!(
+        "Replication: {}\nPartitions: {}\nSum of Offsets: {}",
+        replica_count, partition_count, sum_offsets
+    )
+}
+
+fn format_partition_list_headers() -> String {
+    let id_fmt = format_padded("Partition", CHARS_PARTITION_ID);
+    let offset_fmt = format_padded("Offset", CHARS_PARTITION_OFFSET);
+
+    format!("{} {}", id_fmt, offset_fmt)
+}
+
+fn format_partition_list(partitions: &Vec<TopicPartitionDetails>) -> String {
+    let result_lines: Vec<String> = partitions
+        .iter()
+        .map(|partition| {
+            let id_fmt = format_padded(&partition.id.to_string(), CHARS_PARTITION_ID);
+            let offset_fmt = format_padded(&partition.offset.to_string(), CHARS_PARTITION_OFFSET);
+
+            format!("{} {}", id_fmt, offset_fmt)
+        })
+        .collect();
+
+    result_lines.join("\n")
 }

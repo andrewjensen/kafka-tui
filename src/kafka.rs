@@ -25,7 +25,19 @@ pub struct TopicSummary {
     pub offset_sum: i64,
 }
 
-pub fn fetch_metadata(brokers: &str) -> ClusterSummary {
+#[derive(Debug)]
+pub struct TopicDetails {
+    pub name: String,
+    pub partitions: Vec<TopicPartitionDetails>,
+}
+
+#[derive(Debug)]
+pub struct TopicPartitionDetails {
+    pub id: i32,
+    pub offset: i64,
+}
+
+pub fn fetch_cluster_metadata(brokers: &str) -> ClusterSummary {
     let timeout = Duration::from_millis(DEFAULT_TIMEOUT_MS);
 
     let consumer: BaseConsumer = ClientConfig::new()
@@ -36,14 +48,6 @@ pub fn fetch_metadata(brokers: &str) -> ClusterSummary {
     let metadata = consumer
         .fetch_metadata(None, timeout)
         .expect("Failed to fetch metadata");
-
-    // TODO: Return cluster-level information too
-
-    // println!("Cluster information:");
-    // println!("  Broker count: {}", metadata.brokers().len());
-    // println!("  Topics count: {}", metadata.topics().len());
-    // println!("  Metadata broker name: {}", metadata.orig_broker_name());
-    // println!("  Metadata broker id: {}\n", metadata.orig_broker_id());
 
     let brokers: Vec<BrokerSummary> = metadata
         .brokers()
@@ -106,5 +110,40 @@ pub fn fetch_metadata(brokers: &str) -> ClusterSummary {
     ClusterSummary {
         brokers: brokers,
         topics: topics,
+    }
+}
+
+pub fn fetch_topic_details(brokers: &str, topic_name: &str) -> TopicDetails {
+    let timeout = Duration::from_millis(DEFAULT_TIMEOUT_MS);
+
+    let consumer: BaseConsumer = ClientConfig::new()
+        .set("bootstrap.servers", brokers)
+        .create()
+        .expect("Consumer creation failed");
+
+    let metadata = consumer
+        .fetch_metadata(Some(topic_name), timeout)
+        .expect("Failed to fetch metadata");
+
+    let topic = metadata.topics().iter().next().unwrap();
+
+    let partitions: Vec<TopicPartitionDetails> = topic
+        .partitions()
+        .iter()
+        .map(|partition| {
+            let (_low_watermark, high_watermark) = consumer
+                .fetch_watermarks(topic.name(), partition.id(), Duration::from_secs(1))
+                .unwrap_or((-1, -1));
+
+            TopicPartitionDetails {
+                id: partition.id(),
+                offset: high_watermark,
+            }
+        })
+        .collect();
+
+    TopicDetails {
+        name: topic.name().to_string(),
+        partitions: partitions,
     }
 }
