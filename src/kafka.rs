@@ -3,6 +3,10 @@ use rdkafka::consumer::{BaseConsumer, Consumer};
 use std::collections::HashSet;
 use std::time::Duration;
 
+mod consumer_offsets;
+
+pub use consumer_offsets::{fetch_consumer_offset_state, ClusterConsumerOffsetState};
+
 const DEFAULT_TIMEOUT_MS: u64 = 60_000;
 
 #[derive(Debug)]

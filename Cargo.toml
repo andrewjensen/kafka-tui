@@ -3,9 +3,28 @@ name = "kafka-tui"
 version = "0.1.0"
 authors = ["Andrew Jensen <andrewjensen90@gmail.com>"]
 edition = "2018"
+default-run = "kafka-tui"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[[bin]]
+name = "offsets"
+path = "src/read_consumer_group_offsets.rs"
+
+[[bin]]
+name = "cluster"
+path = "src/debug_cluster_metadata.rs"
+
+[[bin]]
+name = "console_consumer_group"
+path = "src/console_consumer_group.rs"
 
 [dependencies]
 cursive = "0.14"
 rdkafka = "0.23"
+byteorder = "1"
+
+# Temp
+clap = "*"
+futures = "*"
+tokio = { version = "0.2", features = ["blocking", "macros", "rt-core", "time"] }
