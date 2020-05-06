@@ -7,7 +7,8 @@ mod kafka;
 
 use formatting::format_padded;
 use kafka::{
-    fetch_cluster_metadata, fetch_topic_details, TopicDetails, TopicPartitionDetails, TopicSummary,
+    fetch_cluster_metadata, fetch_consumer_offset_state, fetch_topic_details, TopicDetails,
+    TopicPartitionDetails, TopicState, TopicSummary,
 };
 
 const MOCK_BROKERS: &str = "localhost:9092";
@@ -21,11 +22,16 @@ const CHARS_SUM_OFFSETS: usize = 9;
 // For topic view
 const CHARS_PARTITION_ID: usize = 10;
 const CHARS_PARTITION_OFFSET: usize = 10;
+const CHARS_CG_NAME: usize = 40;
+const CHARS_CG_SUM_OFFSETS: usize = 9;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     println!("Fetching cluster metadata...");
-
     let cluster_summary = fetch_cluster_metadata(MOCK_BROKERS);
+
+    println!("Fetching consumer group states...");
+    let cluster_cg_state = fetch_consumer_offset_state().await;
 
     let mut topics = cluster_summary.topics;
     topics.sort_by(|a, b| a.name.cmp(&b.name));
@@ -50,7 +56,15 @@ fn main() {
                             .iter()
                             .map(|topic| (format_topic_summary(topic), topic.name.clone())),
                     )
-                    .on_submit(on_select_topic),
+                    .on_submit(move |s, topic_name| {
+                        let topic = fetch_topic_details(MOCK_BROKERS, topic_name);
+                        let topic_cg_state: Option<&TopicState> =
+                            match cluster_cg_state.topics.get(&topic_name.to_string()) {
+                                Some(state) => Some(&state),
+                                None => None,
+                            };
+                        on_select_topic(s, topic, topic_cg_state);
+                    }),
             )),
     )
     .title("Kafka");
@@ -62,8 +76,15 @@ fn main() {
 
 // Summary View helpers
 
-fn on_select_topic(s: &mut Cursive, topic_name: &str) {
-    let topic = fetch_topic_details(MOCK_BROKERS, topic_name);
+fn on_select_topic(siv: &mut Cursive, topic: TopicDetails, cg_state: Option<&TopicState>) {
+    let cg_view = match cg_state {
+        Some(cg_state) => LinearLayout::vertical()
+            .child(TextView::new(format_consumer_group_list_headers()).effect(Effect::Bold))
+            .child(TextView::new(format_consumer_group_list(cg_state))),
+        None => LinearLayout::vertical()
+            .child(TextView::new("Consumer Groups").effect(Effect::Bold))
+            .child(TextView::new("(None)")),
+    };
 
     let topic_view = Dialog::around(
         LinearLayout::vertical()
@@ -73,14 +94,16 @@ fn on_select_topic(s: &mut Cursive, topic_name: &str) {
             .child(TextView::new(format_partition_list_headers()).effect(Effect::Bold))
             .child(ScrollView::new(TextView::new(format_partition_list(
                 &topic.partitions,
-            )))),
+            ))))
+            .child(DummyView)
+            .child(cg_view),
     )
-    .title(format!("Topic: {}", topic_name))
+    .title(format!("Topic: {}", topic.name))
     .button("Back", |s| {
         s.pop_layer();
     });
 
-    s.add_layer(topic_view);
+    siv.add_layer(topic_view);
 }
 
 fn format_cluster_summary(topic_count: usize, broker_count: usize) -> String {
@@ -141,6 +164,34 @@ fn format_partition_list(partitions: &Vec<TopicPartitionDetails>) -> String {
             let offset_fmt = format_padded(&partition.offset.to_string(), CHARS_PARTITION_OFFSET);
 
             format!("{} {}", id_fmt, offset_fmt)
+        })
+        .collect();
+
+    result_lines.join("\n")
+}
+
+fn format_consumer_group_list_headers() -> String {
+    let name_fmt = format_padded("Consumer Group", CHARS_CG_NAME);
+    let offset_fmt = format_padded("Offsets", CHARS_CG_SUM_OFFSETS);
+
+    format!("{} {}", name_fmt, offset_fmt)
+}
+
+fn format_consumer_group_list(topic_state: &TopicState) -> String {
+    let result_lines: Vec<String> = topic_state
+        .consumer_group_states
+        .iter()
+        .map(|(cg_name, cg_offsets)| {
+            let sum_offsets = cg_offsets
+                .iter()
+                .fold(0, |sum, (_partition_id, partition_offset)| {
+                    partition_offset + sum
+                });
+
+            let name_fmt = format_padded(cg_name, CHARS_CG_NAME);
+            let offset_fmt = format_padded(&sum_offsets.to_string(), CHARS_CG_SUM_OFFSETS);
+
+            format!("{} {}", name_fmt, offset_fmt)
         })
         .collect();
 

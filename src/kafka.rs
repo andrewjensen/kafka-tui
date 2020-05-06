@@ -5,7 +5,7 @@ use std::time::Duration;
 
 mod consumer_offsets;
 
-pub use consumer_offsets::{fetch_consumer_offset_state, ClusterConsumerOffsetState};
+pub use consumer_offsets::{fetch_consumer_offset_state, ClusterConsumerOffsetState, TopicState};
 
 const DEFAULT_TIMEOUT_MS: u64 = 60_000;
 
