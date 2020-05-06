@@ -35,7 +35,7 @@ impl ClusterConsumerOffsetState {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TopicState {
     pub consumer_group_states: HashMap<String, OffsetMap>,
 }
@@ -56,7 +56,7 @@ impl TopicState {
     }
 }
 
-type OffsetMap = HashMap<i32, i64>;
+pub type OffsetMap = HashMap<i32, i64>;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct ConsumerOffsetMessage {

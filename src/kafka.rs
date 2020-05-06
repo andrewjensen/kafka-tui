@@ -5,7 +5,9 @@ use std::time::Duration;
 
 mod consumer_offsets;
 
-pub use consumer_offsets::{fetch_consumer_offset_state, ClusterConsumerOffsetState, TopicState};
+pub use consumer_offsets::{
+    fetch_consumer_offset_state, ClusterConsumerOffsetState, OffsetMap, TopicState,
+};
 
 const DEFAULT_TIMEOUT_MS: u64 = 60_000;
 
@@ -30,14 +32,14 @@ pub struct TopicSummary {
     pub offset_sum: i64,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TopicDetails {
     pub name: String,
     pub replicas: HashSet<i32>,
     pub partitions: Vec<TopicPartitionDetails>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TopicPartitionDetails {
     pub id: i32,
     pub offset: i64,
