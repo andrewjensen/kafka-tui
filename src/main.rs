@@ -25,6 +25,9 @@ const CHARS_PARTITION_OFFSET: usize = 10;
 const CHARS_CG_NAME: usize = 40;
 const CHARS_CG_SUM_OFFSETS: usize = 9;
 
+// For consumer group view
+const CHARS_PARTITION_LAG: usize = 10;
+
 #[tokio::main]
 async fn main() {
     println!("Fetching cluster metadata...");
@@ -160,7 +163,13 @@ fn on_select_consumer_group(siv: &mut Cursive, consumer_group_name: &str, offset
     let consumer_group_view = Dialog::around(
         LinearLayout::vertical()
             .child(TextView::new("Consumer Group").effect(Effect::Bold))
-            .child(TextView::new("Hello world")),
+            .child(DummyView)
+            .child(
+                TextView::new(format_consumer_group_partition_list_headers()).effect(Effect::Bold),
+            )
+            .child(ScrollView::new(TextView::new(
+                format_consumer_group_partition_list(&offset_map),
+            ))),
     )
     .title(format!("Consumer Group: {}", consumer_group_name))
     .button("Back", |s| {
@@ -222,4 +231,32 @@ fn format_consumer_group(cg_name: &str, offset_map: &OffsetMap) -> String {
     let offset_fmt = format_padded(&sum_offsets.to_string(), CHARS_CG_SUM_OFFSETS);
 
     format!("{} {}", name_fmt, offset_fmt)
+}
+
+// Consumer Group View helpers
+
+fn format_consumer_group_partition_list_headers() -> String {
+    let partition_fmt = format_padded("Partition", CHARS_PARTITION_ID);
+    let offset_fmt = format_padded("Offset", CHARS_PARTITION_OFFSET);
+    let lag_fmt = format_padded("Lag", CHARS_PARTITION_LAG);
+
+    format!("{} {} {}", partition_fmt, offset_fmt, lag_fmt)
+}
+
+fn format_consumer_group_partition_list(offset_map: &OffsetMap) -> String {
+    // TODO: after refactoring OffsetMap, iterate over every partition ID, in numeric order
+
+    let result_lines: Vec<String> = offset_map
+        .iter()
+        .map(|(partition_id, cg_offset)| {
+            let partition_fmt = format_padded(&partition_id.to_string(), CHARS_PARTITION_ID);
+            let offset_fmt = format_padded(&cg_offset.to_string(), CHARS_PARTITION_OFFSET);
+            // TODO: show CG lag on each partition
+            let lag_fmt = format_padded("TODO", CHARS_PARTITION_LAG);
+
+            format!("{} {} {}", partition_fmt, offset_fmt, lag_fmt)
+        })
+        .collect();
+
+    result_lines.join("\n")
 }
