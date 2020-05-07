@@ -51,12 +51,51 @@ impl TopicState {
         let cg_state = self
             .consumer_group_states
             .entry(message.consumer_group.clone())
-            .or_insert(HashMap::new());
-        cg_state.insert(message.partition_id, message.offset);
+            .or_insert(OffsetMap::new());
+        cg_state.set(message.partition_id, message.offset);
     }
 }
 
-pub type OffsetMap = HashMap<i32, i64>;
+#[derive(Debug, Clone)]
+pub struct OffsetMap {
+    pub partition_count: Option<usize>,
+    pub partition_offsets: HashMap<i32, i64>,
+}
+
+impl OffsetMap {
+    pub fn new() -> Self {
+        Self {
+            partition_count: None,
+            partition_offsets: HashMap::new(),
+        }
+    }
+
+    pub fn create_with_count(partition_count: usize) -> Self {
+        Self {
+            partition_count: Some(partition_count),
+            partition_offsets: HashMap::new(),
+        }
+    }
+
+    pub fn get(&self, partition_id: i32) -> i64 {
+        match self.partition_offsets.get(&partition_id) {
+            Some(offset) => *offset,
+            None => 0,
+        }
+    }
+
+    pub fn set(&mut self, partition_id: i32, offset: i64) {
+        self.partition_offsets.insert(partition_id, offset);
+    }
+
+    pub fn get_summed_offsets(&self) -> i64 {
+        self.partition_offsets
+            .iter()
+            .fold(0, |sum, (_partition_id, partition_offset)| {
+                partition_offset + sum
+            })
+    }
+}
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct ConsumerOffsetMessage {
@@ -74,7 +113,8 @@ pub enum DecodeError {
 pub async fn fetch_consumer_offset_state() -> ClusterConsumerOffsetState {
     let topic_partition_offsets: OffsetMap = fetch_consumer_offsets_topic_offsets();
 
-    let mut consumed_partition_offsets: OffsetMap = HashMap::new();
+    let mut consumed_partition_offsets: OffsetMap =
+        OffsetMap::create_with_count(topic_partition_offsets.partition_count.unwrap());
 
     let mut cluster_state = ClusterConsumerOffsetState::new();
 
@@ -105,7 +145,7 @@ pub async fn fetch_consumer_offset_state() -> ClusterConsumerOffsetState {
 
         let m = message.unwrap();
 
-        consumed_partition_offsets.insert(m.partition(), m.offset());
+        consumed_partition_offsets.set(m.partition(), m.offset());
 
         let key = m.key();
         let payload = m.payload();
@@ -198,37 +238,34 @@ fn fetch_consumer_offsets_topic_offsets() -> OffsetMap {
 
     let topic = metadata.topics().iter().next().unwrap();
 
-    topic
-        .partitions()
-        .iter()
-        .map(|partition| {
-            let (_low_watermark, high_watermark) = consumer
-                .fetch_watermarks(topic.name(), partition.id(), Duration::from_secs(1))
-                .unwrap();
+    let mut offset_map = OffsetMap::create_with_count(topic.partitions().len());
 
-            (partition.id(), high_watermark)
-        })
-        .collect()
+    topic.partitions().iter().for_each(|partition| {
+        let (_low_watermark, high_watermark) = consumer
+            .fetch_watermarks(topic.name(), partition.id(), Duration::from_secs(1))
+            .unwrap();
+
+        offset_map.set(partition.id(), high_watermark);
+    });
+
+    offset_map
 }
 
 fn is_consumer_caught_up(
     topic_partition_offsets: &OffsetMap,
     consumed_partition_offsets: &OffsetMap,
 ) -> bool {
-    for (partition_id, partition_offset) in topic_partition_offsets.iter() {
-        if *partition_offset == 0 {
+    let topic_partitions = topic_partition_offsets.partition_count.unwrap() as i32;
+
+    for partition_id in 0..topic_partitions {
+        let partition_offset = topic_partition_offsets.get(partition_id);
+        if partition_offset == 0 {
             continue;
         }
 
-        match consumed_partition_offsets.get(partition_id) {
-            Some(consumed_offset) => {
-                if *consumed_offset < partition_offset - 1 {
-                    return false;
-                }
-            }
-            None => {
-                return false;
-            }
+        let cg_offset = consumed_partition_offsets.get(partition_id);
+        if cg_offset < partition_offset - 1 {
+            return false;
         }
     }
 

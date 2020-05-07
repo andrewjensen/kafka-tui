@@ -221,11 +221,7 @@ fn format_consumer_group_list_headers() -> String {
 }
 
 fn format_consumer_group(cg_name: &str, offset_map: &OffsetMap) -> String {
-    let sum_offsets = offset_map
-        .iter()
-        .fold(0, |sum, (_partition_id, partition_offset)| {
-            partition_offset + sum
-        });
+    let sum_offsets = offset_map.get_summed_offsets();
 
     let name_fmt = format_padded(cg_name, CHARS_CG_NAME);
     let offset_fmt = format_padded(&sum_offsets.to_string(), CHARS_CG_SUM_OFFSETS);
@@ -244,11 +240,13 @@ fn format_consumer_group_partition_list_headers() -> String {
 }
 
 fn format_consumer_group_partition_list(offset_map: &OffsetMap) -> String {
-    // TODO: after refactoring OffsetMap, iterate over every partition ID, in numeric order
+    // FIXME: replace this with the actual topic partition count
+    let mock_partition_count = 50;
 
-    let result_lines: Vec<String> = offset_map
-        .iter()
-        .map(|(partition_id, cg_offset)| {
+    let result_lines: Vec<String> = (0..mock_partition_count)
+        .map(|partition_id| {
+            let cg_offset = offset_map.get(partition_id);
+
             let partition_fmt = format_padded(&partition_id.to_string(), CHARS_PARTITION_ID);
             let offset_fmt = format_padded(&cg_offset.to_string(), CHARS_PARTITION_OFFSET);
             // TODO: show CG lag on each partition
