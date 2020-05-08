@@ -43,7 +43,7 @@ fn format_consumer_group_partition_list_headers() -> String {
 }
 
 fn format_consumer_group_partition_list(offset_map: &OffsetMap) -> String {
-    // FIXME: replace this with the actual topic partition count
+    // TODO: replace this with the actual topic partition count
     let mock_partition_count = 50;
 
     let result_lines: Vec<String> = (0..mock_partition_count)

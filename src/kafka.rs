@@ -36,13 +36,7 @@ pub struct TopicSummary {
 pub struct TopicDetails {
     pub name: String,
     pub replicas: HashSet<i32>,
-    pub partitions: Vec<TopicPartitionDetails>,
-}
-
-#[derive(Debug, Clone)]
-pub struct TopicPartitionDetails {
-    pub id: i32,
-    pub offset: i64,
+    pub partitions: OffsetMap,
 }
 
 pub fn fetch_cluster_metadata(brokers: &str) -> ClusterSummary {
@@ -118,30 +112,22 @@ pub fn fetch_topic_details(brokers: &str, topic_name: &str) -> TopicDetails {
     let topic = metadata.topics().iter().next().unwrap();
 
     let mut topic_replicas = HashSet::new();
+    let mut topic_partitions = OffsetMap::create_with_count(topic.partitions().len());
+
     for partition in topic.partitions() {
         for replica in partition.replicas() {
             topic_replicas.insert(*replica);
         }
+
+        let (_low_watermark, high_watermark) = consumer
+            .fetch_watermarks(topic.name(), partition.id(), Duration::from_secs(1))
+            .unwrap_or((-1, -1));
+        topic_partitions.set(partition.id(), high_watermark);
     }
-
-    let partitions: Vec<TopicPartitionDetails> = topic
-        .partitions()
-        .iter()
-        .map(|partition| {
-            let (_low_watermark, high_watermark) = consumer
-                .fetch_watermarks(topic.name(), partition.id(), Duration::from_secs(1))
-                .unwrap_or((-1, -1));
-
-            TopicPartitionDetails {
-                id: partition.id(),
-                offset: high_watermark,
-            }
-        })
-        .collect();
 
     TopicDetails {
         name: topic.name().to_string(),
         replicas: topic_replicas,
-        partitions: partitions,
+        partitions: topic_partitions,
     }
 }

@@ -3,7 +3,7 @@ use cursive::views::{Dialog, DummyView, LinearLayout, ScrollView, SelectView, Te
 use cursive::Cursive;
 
 use crate::formatting::format_padded;
-use crate::kafka::{OffsetMap, TopicDetails, TopicPartitionDetails, TopicState};
+use crate::kafka::{OffsetMap, TopicDetails, TopicState};
 use crate::tui::render_consumer_group_view;
 
 const CHARS_PARTITION_ID: usize = 10;
@@ -62,11 +62,8 @@ pub fn render_topic_view(siv: &mut Cursive, topic: TopicDetails, topic_state: Op
 
 fn format_topic_details(topic: &TopicDetails) -> String {
     let replica_count = topic.replicas.len();
-    let partition_count = topic.partitions.len();
-    let sum_offsets: i64 = topic
-        .partitions
-        .iter()
-        .fold(0, |sum, partition| partition.offset + sum);
+    let partition_count = topic.partitions.partition_count.unwrap();
+    let sum_offsets: i64 = topic.partitions.get_summed_offsets();
     format!(
         "Replication: {}\nPartitions: {}\nSum of Offsets: {}",
         replica_count, partition_count, sum_offsets
@@ -80,12 +77,15 @@ fn format_partition_list_headers() -> String {
     format!("{} {}", id_fmt, offset_fmt)
 }
 
-fn format_partition_list(partitions: &Vec<TopicPartitionDetails>) -> String {
-    let result_lines: Vec<String> = partitions
-        .iter()
-        .map(|partition| {
-            let id_fmt = format_padded(&partition.id.to_string(), CHARS_PARTITION_ID);
-            let offset_fmt = format_padded(&partition.offset.to_string(), CHARS_PARTITION_OFFSET);
+fn format_partition_list(partitions: &OffsetMap) -> String {
+    let partition_count = partitions.partition_count.unwrap() as i32;
+
+    let result_lines: Vec<String> = (0..partition_count)
+        .map(|partition_id| {
+            let offset = partitions.get(partition_id);
+
+            let id_fmt = format_padded(&partition_id.to_string(), CHARS_PARTITION_ID);
+            let offset_fmt = format_padded(&offset.to_string(), CHARS_PARTITION_OFFSET);
 
             format!("{} {}", id_fmt, offset_fmt)
         })
