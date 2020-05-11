@@ -1,20 +1,29 @@
 use cursive::theme::Effect;
 use cursive::views::{Dialog, DummyView, LinearLayout, ScrollView, TextView};
 use cursive::Cursive;
+use std::sync::Arc;
 
 use crate::formatting::format_padded;
 use crate::kafka::OffsetMap;
+use crate::Model;
 
 const CHARS_PARTITION_ID: usize = 10;
 const CHARS_PARTITION_OFFSET: usize = 10;
 const CHARS_PARTITION_LAG: usize = 10;
 
-// TODO: pass in topic offsets so we can display partition lag
-pub fn render_consumer_group_view(
-    siv: &mut Cursive,
-    consumer_group_name: &str,
-    offset_map: OffsetMap,
-) {
+pub fn render_consumer_group_view(siv: &mut Cursive, topic_name: &str, cg_name: &str) {
+    let model = siv.user_data::<Model>().unwrap();
+    let model_ref = Arc::clone(&model);
+    let model_inner = model_ref.lock().unwrap();
+
+    let topic_cg_state = model_inner
+        .cluster_cg_state
+        .topics
+        .get(&topic_name.to_string())
+        .unwrap();
+
+    let offset_map = topic_cg_state.consumer_group_states.get(cg_name).unwrap();
+
     let consumer_group_view = Dialog::around(
         LinearLayout::vertical()
             .child(TextView::new("Consumer Group").effect(Effect::Bold))
@@ -23,10 +32,10 @@ pub fn render_consumer_group_view(
                 TextView::new(format_consumer_group_partition_list_headers()).effect(Effect::Bold),
             )
             .child(ScrollView::new(TextView::new(
-                format_consumer_group_partition_list(&offset_map),
+                format_consumer_group_partition_list(offset_map),
             ))),
     )
-    .title(format!("Consumer Group: {}", consumer_group_name))
+    .title(format!("Consumer Group: {}", cg_name))
     .button("Back", |s| {
         s.pop_layer();
     });

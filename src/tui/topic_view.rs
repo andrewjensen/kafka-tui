@@ -1,18 +1,30 @@
 use cursive::theme::Effect;
 use cursive::views::{Dialog, DummyView, LinearLayout, ScrollView, SelectView, TextView};
 use cursive::Cursive;
+use std::sync::Arc;
 
 use crate::formatting::format_padded;
-use crate::kafka::{OffsetMap, TopicDetails, TopicState};
+use crate::kafka::{fetch_topic_details, OffsetMap, TopicDetails};
 use crate::tui::render_consumer_group_view;
+use crate::{Model, MOCK_BROKERS};
 
 const CHARS_PARTITION_ID: usize = 10;
 const CHARS_PARTITION_OFFSET: usize = 10;
 const CHARS_CG_NAME: usize = 40;
 const CHARS_CG_SUM_OFFSETS: usize = 9;
 
-pub fn render_topic_view(siv: &mut Cursive, topic: TopicDetails, topic_state: Option<TopicState>) {
-    let cg_view = match topic_state {
+pub fn render_topic_view(siv: &mut Cursive, topic_name: &str) {
+    let model = siv.user_data::<Model>().unwrap();
+    let model_ref = Arc::clone(&model);
+    let model_inner = model_ref.lock().unwrap();
+
+    let topic = fetch_topic_details(MOCK_BROKERS, topic_name);
+    let topic_cg_state = model_inner
+        .cluster_cg_state
+        .topics
+        .get(&topic_name.to_string());
+
+    let cg_view = match topic_cg_state {
         Some(topic_state) => LinearLayout::vertical()
             .child(TextView::new(format_consumer_group_list_headers()).effect(Effect::Bold))
             .child(ScrollView::new(
@@ -21,18 +33,11 @@ pub fn render_topic_view(siv: &mut Cursive, topic: TopicDetails, topic_state: Op
                         |(cg_name, cg_offset_map)| {
                             (
                                 format_consumer_group(cg_name, &cg_offset_map),
-                                cg_name.clone(),
+                                (topic_name.to_string(), cg_name.clone()),
                             )
                         },
                     ))
-                    .on_submit(move |s, cg_name| {
-                        let offset_map: OffsetMap = topic_state
-                            .consumer_group_states
-                            .get(cg_name)
-                            .unwrap()
-                            .clone();
-                        render_consumer_group_view(s, cg_name, offset_map);
-                    }),
+                    .on_submit(on_select_consumer_group),
             )),
 
         None => LinearLayout::vertical()
@@ -58,6 +63,10 @@ pub fn render_topic_view(siv: &mut Cursive, topic: TopicDetails, topic_state: Op
     });
 
     siv.add_layer(topic_view);
+}
+
+fn on_select_consumer_group(siv: &mut Cursive, (topic_name, cg_name): &(String, String)) {
+    render_consumer_group_view(siv, topic_name, cg_name);
 }
 
 fn format_topic_details(topic: &TopicDetails) -> String {

@@ -1,26 +1,24 @@
 use cursive::theme::Effect;
 use cursive::views::{Dialog, DummyView, LinearLayout, ScrollView, SelectView, TextView};
 use cursive::Cursive;
-
-use crate::MOCK_BROKERS;
+use std::sync::Arc;
 
 use crate::formatting::format_padded;
-use crate::kafka::{
-    fetch_topic_details, ClusterConsumerOffsetState, ClusterSummary, TopicState, TopicSummary,
-};
+use crate::kafka::TopicSummary;
 use crate::tui::render_topic_view;
+use crate::Model;
 
 const CHARS_TOPIC_NAME: usize = 40;
 const CHARS_PARTITION_COUNT: usize = 11;
 const CHARS_REPLICA_COUNT: usize = 9;
 const CHARS_SUM_OFFSETS: usize = 9;
 
-pub fn render_summary_view(
-    siv: &mut Cursive,
-    cluster_summary: ClusterSummary,
-    cluster_cg_state: ClusterConsumerOffsetState,
-) {
-    let mut topics = cluster_summary.topics;
+pub fn render_summary_view(siv: &mut Cursive) {
+    let model = siv.user_data::<Model>().unwrap();
+    let model_ref = Arc::clone(&model);
+    let model_inner = model_ref.lock().unwrap();
+
+    let mut topics: Vec<&TopicSummary> = model_inner.cluster_summary.topics.iter().collect();
     topics.sort_by(|a, b| a.name.cmp(&b.name));
 
     let summary_view = Dialog::around(
@@ -28,7 +26,7 @@ pub fn render_summary_view(
             .child(TextView::new("Cluster").effect(Effect::Bold))
             .child(TextView::new(format_cluster_summary(
                 topics.len(),
-                cluster_summary.brokers.len(),
+                model_inner.cluster_summary.brokers.len(),
             )))
             .child(DummyView)
             .child(TextView::new(format_topic_list_headers()).effect(Effect::Bold))
@@ -39,20 +37,16 @@ pub fn render_summary_view(
                             .iter()
                             .map(|topic| (format_topic_summary(topic), topic.name.clone())),
                     )
-                    .on_submit(move |s, topic_name| {
-                        let topic = fetch_topic_details(MOCK_BROKERS, topic_name);
-                        let topic_cg_state: Option<TopicState> =
-                            match cluster_cg_state.topics.get(&topic_name.to_string()) {
-                                Some(state) => Some(state.clone()),
-                                None => None,
-                            };
-                        render_topic_view(s, topic, topic_cg_state);
-                    }),
+                    .on_submit(on_select_topic),
             )),
     )
     .title("Kafka");
 
     siv.add_layer(summary_view);
+}
+
+fn on_select_topic(siv: &mut Cursive, topic_name: &str) {
+    render_topic_view(siv, topic_name);
 }
 
 fn format_cluster_summary(topic_count: usize, broker_count: usize) -> String {
