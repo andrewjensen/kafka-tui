@@ -4,9 +4,9 @@ use cursive::Cursive;
 use std::sync::Arc;
 
 use crate::formatting::format_padded;
-use crate::kafka::{fetch_topic_details, OffsetMap, TopicDetails};
+use crate::kafka::{OffsetMap, TopicDetails};
 use crate::tui::render_consumer_group_view;
-use crate::{Model, MOCK_BROKERS};
+use crate::Model;
 
 const CHARS_PARTITION_ID: usize = 10;
 const CHARS_PARTITION_OFFSET: usize = 10;
@@ -18,7 +18,7 @@ pub fn render_topic_view(siv: &mut Cursive, topic_name: &str) {
     let model_ref = Arc::clone(&model);
     let model_inner = model_ref.lock().unwrap();
 
-    let topic = fetch_topic_details(MOCK_BROKERS, topic_name);
+    let topic: &TopicDetails = model_inner.cluster_summary.topics.get(topic_name).unwrap();
     let topic_cg_state = model_inner
         .cluster_cg_state
         .topics

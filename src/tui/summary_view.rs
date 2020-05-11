@@ -4,7 +4,7 @@ use cursive::Cursive;
 use std::sync::Arc;
 
 use crate::formatting::format_padded;
-use crate::kafka::TopicSummary;
+use crate::kafka::TopicDetails;
 use crate::tui::render_topic_view;
 use crate::Model;
 
@@ -18,7 +18,12 @@ pub fn render_summary_view(siv: &mut Cursive) {
     let model_ref = Arc::clone(&model);
     let model_inner = model_ref.lock().unwrap();
 
-    let mut topics: Vec<&TopicSummary> = model_inner.cluster_summary.topics.iter().collect();
+    let mut topics: Vec<&TopicDetails> = model_inner
+        .cluster_summary
+        .topics
+        .iter()
+        .map(|(_topic_name, topic)| topic)
+        .collect();
     topics.sort_by(|a, b| a.name.cmp(&b.name));
 
     let summary_view = Dialog::around(
@@ -65,11 +70,14 @@ fn format_topic_list_headers() -> String {
     )
 }
 
-fn format_topic_summary(topic: &TopicSummary) -> String {
+fn format_topic_summary(topic: &TopicDetails) -> String {
+    let partition_count = topic.partitions.partition_count.unwrap();
+    let summed_offsets = topic.partitions.get_summed_offsets();
+
     let name_fmt = format_padded(&topic.name, CHARS_TOPIC_NAME);
-    let partitions_fmt = format_padded(&topic.partition_count.to_string(), CHARS_PARTITION_COUNT);
-    let replicas_fmt = format_padded(&topic.replica_count.to_string(), CHARS_REPLICA_COUNT);
-    let offsets_fmt = format_padded(&topic.offset_sum.to_string(), CHARS_SUM_OFFSETS);
+    let partitions_fmt = format_padded(&partition_count.to_string(), CHARS_PARTITION_COUNT);
+    let replicas_fmt = format_padded(&topic.replicas.len().to_string(), CHARS_REPLICA_COUNT);
+    let offsets_fmt = format_padded(&summed_offsets.to_string(), CHARS_SUM_OFFSETS);
 
     format!(
         "{} {} {} {}",

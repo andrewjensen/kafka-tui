@@ -1,6 +1,6 @@
 use rdkafka::config::ClientConfig;
 use rdkafka::consumer::{BaseConsumer, Consumer};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 
 mod consumer_offsets;
@@ -14,7 +14,7 @@ const DEFAULT_TIMEOUT_MS: u64 = 60_000;
 #[derive(Debug)]
 pub struct ClusterSummary {
     pub brokers: Vec<BrokerSummary>,
-    pub topics: Vec<TopicSummary>,
+    pub topics: HashMap<String, TopicDetails>,
 }
 
 #[derive(Debug)]
@@ -22,14 +22,6 @@ pub struct BrokerSummary {
     pub id: i32,
     pub host: String,
     pub port: i32,
-}
-
-#[derive(Debug)]
-pub struct TopicSummary {
-    pub name: String,
-    pub partition_count: usize,
-    pub replica_count: usize,
-    pub offset_sum: i64,
 }
 
 #[derive(Debug, Clone)]
@@ -61,73 +53,38 @@ pub fn fetch_cluster_metadata(brokers: &str) -> ClusterSummary {
         })
         .collect();
 
-    let topics: Vec<TopicSummary> = metadata
+    let topics: HashMap<String, TopicDetails> = metadata
         .topics()
         .iter()
         .map(|topic| {
             // TODO: check topic.error()
 
-            let offset_sum: i64 = topic.partitions().iter().fold(0, |sum, partition| {
+            let mut topic_replicas = HashSet::new();
+            let mut topic_partitions = OffsetMap::create_with_count(topic.partitions().len());
+
+            for partition in topic.partitions() {
+                for replica in partition.replicas() {
+                    topic_replicas.insert(*replica);
+                }
+
                 let (_low_watermark, high_watermark) = consumer
                     .fetch_watermarks(topic.name(), partition.id(), Duration::from_secs(1))
                     .unwrap_or((-1, -1));
-
-                sum + high_watermark
-            });
-
-            let mut topic_replicas = HashSet::new();
-            for partition in topic.partitions() {
-                for replica in partition.replicas() {
-                    topic_replicas.insert(replica);
-                }
+                topic_partitions.set(partition.id(), high_watermark);
             }
 
-            TopicSummary {
+            let details = TopicDetails {
                 name: topic.name().to_string(),
-                partition_count: topic.partitions().len(),
-                replica_count: topic_replicas.len(),
-                offset_sum: offset_sum,
-            }
+                replicas: topic_replicas,
+                partitions: topic_partitions,
+            };
+
+            (topic.name().to_string(), details)
         })
         .collect();
 
     ClusterSummary {
         brokers: brokers,
         topics: topics,
-    }
-}
-
-pub fn fetch_topic_details(brokers: &str, topic_name: &str) -> TopicDetails {
-    let timeout = Duration::from_millis(DEFAULT_TIMEOUT_MS);
-
-    let consumer: BaseConsumer = ClientConfig::new()
-        .set("bootstrap.servers", brokers)
-        .create()
-        .expect("Consumer creation failed");
-
-    let metadata = consumer
-        .fetch_metadata(Some(topic_name), timeout)
-        .expect("Failed to fetch metadata");
-
-    let topic = metadata.topics().iter().next().unwrap();
-
-    let mut topic_replicas = HashSet::new();
-    let mut topic_partitions = OffsetMap::create_with_count(topic.partitions().len());
-
-    for partition in topic.partitions() {
-        for replica in partition.replicas() {
-            topic_replicas.insert(*replica);
-        }
-
-        let (_low_watermark, high_watermark) = consumer
-            .fetch_watermarks(topic.name(), partition.id(), Duration::from_secs(1))
-            .unwrap_or((-1, -1));
-        topic_partitions.set(partition.id(), high_watermark);
-    }
-
-    TopicDetails {
-        name: topic.name().to_string(),
-        replicas: topic_replicas,
-        partitions: topic_partitions,
     }
 }
