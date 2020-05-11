@@ -16,13 +16,17 @@ pub fn render_consumer_group_view(siv: &mut Cursive, topic_name: &str, cg_name: 
     let model_ref = Arc::clone(&model);
     let model_inner = model_ref.lock().unwrap();
 
+    let topic = model_inner.cluster_summary.topics.get(topic_name).unwrap();
+
+    let topic_offsets = &topic.partitions;
+
     let topic_cg_state = model_inner
         .cluster_cg_state
         .topics
         .get(&topic_name.to_string())
         .unwrap();
 
-    let offset_map = topic_cg_state.consumer_group_states.get(cg_name).unwrap();
+    let cg_offsets = topic_cg_state.consumer_group_states.get(cg_name).unwrap();
 
     let consumer_group_view = Dialog::around(
         LinearLayout::vertical()
@@ -32,7 +36,7 @@ pub fn render_consumer_group_view(siv: &mut Cursive, topic_name: &str, cg_name: 
                 TextView::new(format_consumer_group_partition_list_headers()).effect(Effect::Bold),
             )
             .child(ScrollView::new(TextView::new(
-                format_consumer_group_partition_list(offset_map),
+                format_consumer_group_partition_list(topic_offsets, cg_offsets),
             ))),
     )
     .title(format!("Consumer Group: {}", cg_name))
@@ -51,18 +55,21 @@ fn format_consumer_group_partition_list_headers() -> String {
     format!("{} {} {}", partition_fmt, offset_fmt, lag_fmt)
 }
 
-fn format_consumer_group_partition_list(offset_map: &OffsetMap) -> String {
-    // TODO: replace this with the actual topic partition count
-    let mock_partition_count = 50;
+fn format_consumer_group_partition_list(
+    topic_offsets: &OffsetMap,
+    cg_offsets: &OffsetMap,
+) -> String {
+    let partition_count = topic_offsets.partition_count.unwrap() as i32;
 
-    let result_lines: Vec<String> = (0..mock_partition_count)
+    let result_lines: Vec<String> = (0..partition_count)
         .map(|partition_id| {
-            let cg_offset = offset_map.get(partition_id);
+            let partition_offset = topic_offsets.get(partition_id);
+            let cg_offset = cg_offsets.get(partition_id);
+            let cg_lag = partition_offset - cg_offset;
 
             let partition_fmt = format_padded(&partition_id.to_string(), CHARS_PARTITION_ID);
             let offset_fmt = format_padded(&cg_offset.to_string(), CHARS_PARTITION_OFFSET);
-            // TODO: show CG lag on each partition
-            let lag_fmt = format_padded("TODO", CHARS_PARTITION_LAG);
+            let lag_fmt = format_padded(&cg_lag.to_string(), CHARS_PARTITION_LAG);
 
             format!("{} {} {}", partition_fmt, offset_fmt, lag_fmt)
         })
