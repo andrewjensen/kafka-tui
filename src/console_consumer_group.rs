@@ -1,3 +1,5 @@
+// This came from an rdkafka example: https://github.com/fede1024/rust-rdkafka/blob/master/examples/simple_consumer.rs
+
 use clap::{App, Arg};
 use futures::StreamExt;
 
@@ -137,58 +139,3 @@ async fn main() {
 
     consume_and_print(brokers, group_id, &topics).await
 }
-
-// let group_info = consumer
-// .fetch_group_list(None, Duration::from_secs(1))
-// .expect("Failed to fetch consumer group info");
-
-// group_info.groups().iter()
-// // .filter(|group| {
-// //     // TODO: remove temp thing
-// //     group.name() == "Stable"
-// // })
-// .filter(|group| {
-//     // Currently running
-//     group.state() == "Stable"
-// })
-// .for_each(|group| {
-//     group.members().iter().for_each(|member| {
-//         println!("    member: {}", member.id());
-//         match member.metadata() {
-//             Some(metadata) => {
-//                 println!("    metadata: {}", temp_format_byte_stream(metadata));
-//             },
-//             None => {
-//                 println!("    metadata: None");
-//             }
-//         }
-
-//         match member.assignment() {
-//             Some(assignment) => {
-//                 println!("    assignment: {}", temp_format_byte_stream(assignment));
-//             },
-//             None => {
-//                 println!("    assignment: None");
-//             }
-//         }
-//     });
-
-//     println!("  state {}", group.state());
-//     println!("  protocol {}", group.protocol());
-//     println!("  protocol_type {}", group.protocol_type());
-//     println!("");
-// });
-
-// fn temp_format_byte_stream(bytes: &[u8]) -> String {
-//     bytes
-//         .iter()
-//         .map(|metadata_byte| {
-//             if *metadata_byte > 32 && *metadata_byte < 127 {
-//                 // Printable ASCII char
-//                 format!("{}", *metadata_byte as char)
-//             } else {
-//                 format!(" {} ", metadata_byte)
-//             }
-//         })
-//         .collect()
-// }
