@@ -311,18 +311,6 @@ fn consume_string(buffer: &[u8]) -> (String, &[u8]) {
     (result, new_buffer)
 }
 
-fn print_byte_stream(bytes: &[u8]) {
-    println!("{:?}", bytes);
-    for byte in bytes {
-        if *byte >= 32 && *byte < 127 {
-            print!("{}", *byte as char);
-        } else {
-            print!("#");
-        }
-    }
-    println!();
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
