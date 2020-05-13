@@ -20,11 +20,9 @@ name = "console_consumer_group"
 path = "src/console_consumer_group.rs"
 
 [dependencies]
-cursive = "0.14"
-rdkafka = "0.23"
 byteorder = "1"
-
-# Temp
-clap = "*"
-futures = "*"
+clap = "2"
+cursive = "0.14"
+futures = "0.3"
+rdkafka = "0.23"
 tokio = { version = "0.2", features = ["blocking", "macros", "rt-core", "time"] }
