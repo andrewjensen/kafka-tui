@@ -1,5 +1,5 @@
 use cursive::theme::Effect;
-use cursive::views::{Dialog, DummyView, LinearLayout, ScrollView, SelectView, TextView};
+use cursive::views::{DummyView, LinearLayout, ResizedView, ScrollView, SelectView, TextView};
 use cursive::Cursive;
 use std::sync::Arc;
 
@@ -45,9 +45,9 @@ pub fn render_topic_view(siv: &mut Cursive, topic_name: &str) {
             .child(TextView::new("(None)")),
     };
 
-    let topic_view = Dialog::around(
+    let topic_view = ResizedView::with_full_screen(
         LinearLayout::vertical()
-            .child(TextView::new("Topic").effect(Effect::Bold))
+            .child(TextView::new(format!("Topic: {}", topic.name)).effect(Effect::Bold))
             .child(TextView::new(format_topic_details(&topic)))
             .child(DummyView)
             .child(TextView::new(format_partition_list_headers()).effect(Effect::Bold))
@@ -56,13 +56,9 @@ pub fn render_topic_view(siv: &mut Cursive, topic_name: &str) {
             ))))
             .child(DummyView)
             .child(cg_view),
-    )
-    .title(format!("Topic: {}", topic.name))
-    .button("Back", |s| {
-        s.pop_layer();
-    });
+    );
 
-    siv.add_layer(topic_view);
+    siv.add_fullscreen_layer(topic_view);
 }
 
 fn on_select_consumer_group(siv: &mut Cursive, (topic_name, cg_name): &(String, String)) {

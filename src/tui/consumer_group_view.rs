@@ -1,5 +1,5 @@
 use cursive::theme::Effect;
-use cursive::views::{Dialog, DummyView, LinearLayout, ScrollView, TextView};
+use cursive::views::{DummyView, LinearLayout, ResizedView, ScrollView, TextView};
 use cursive::Cursive;
 use std::sync::Arc;
 
@@ -28,9 +28,9 @@ pub fn render_consumer_group_view(siv: &mut Cursive, topic_name: &str, cg_name: 
 
     let cg_offsets = topic_cg_state.consumer_group_states.get(cg_name).unwrap();
 
-    let consumer_group_view = Dialog::around(
+    let consumer_group_view = ResizedView::with_full_screen(
         LinearLayout::vertical()
-            .child(TextView::new("Consumer Group").effect(Effect::Bold))
+            .child(TextView::new(format!("Consumer Group: {}", cg_name)).effect(Effect::Bold))
             .child(DummyView)
             .child(
                 TextView::new(format_consumer_group_partition_list_headers()).effect(Effect::Bold),
@@ -38,13 +38,9 @@ pub fn render_consumer_group_view(siv: &mut Cursive, topic_name: &str, cg_name: 
             .child(ScrollView::new(TextView::new(
                 format_consumer_group_partition_list(topic_offsets, cg_offsets),
             ))),
-    )
-    .title(format!("Consumer Group: {}", cg_name))
-    .button("Back", |s| {
-        s.pop_layer();
-    });
+    );
 
-    siv.add_layer(consumer_group_view);
+    siv.add_fullscreen_layer(consumer_group_view);
 }
 
 fn format_consumer_group_partition_list_headers() -> String {

@@ -37,7 +37,14 @@ async fn main() {
 
     siv.set_user_data(Arc::clone(&model));
 
-    siv.add_global_callback('q', |s| s.quit());
+    siv.add_global_callback('q', |s| {
+        let remaining_layers = s.screen().len();
+        if remaining_layers == 1 {
+            s.quit();
+        } else {
+            s.pop_layer().unwrap();
+        }
+    });
 
     render_summary_view(&mut siv);
 

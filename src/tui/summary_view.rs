@@ -1,5 +1,5 @@
 use cursive::theme::Effect;
-use cursive::views::{Dialog, DummyView, LinearLayout, ScrollView, SelectView, TextView};
+use cursive::views::{DummyView, LinearLayout, ResizedView, ScrollView, SelectView, TextView};
 use cursive::Cursive;
 use std::sync::Arc;
 
@@ -8,7 +8,7 @@ use crate::kafka::TopicDetails;
 use crate::tui::render_topic_view;
 use crate::Model;
 
-const CHARS_TOPIC_NAME: usize = 40;
+const CHARS_TOPIC_NAME: usize = 60;
 const CHARS_PARTITION_COUNT: usize = 11;
 const CHARS_REPLICA_COUNT: usize = 9;
 const CHARS_SUM_OFFSETS: usize = 9;
@@ -26,7 +26,7 @@ pub fn render_summary_view(siv: &mut Cursive) {
         .collect();
     topics.sort_by(|a, b| a.name.cmp(&b.name));
 
-    let summary_view = Dialog::around(
+    let summary_view = ResizedView::with_full_screen(
         LinearLayout::vertical()
             .child(TextView::new("Cluster").effect(Effect::Bold))
             .child(TextView::new(format_cluster_summary(
@@ -44,10 +44,9 @@ pub fn render_summary_view(siv: &mut Cursive) {
                     )
                     .on_submit(on_select_topic),
             )),
-    )
-    .title("Kafka");
+    );
 
-    siv.add_layer(summary_view);
+    siv.add_fullscreen_layer(summary_view);
 }
 
 fn on_select_topic(siv: &mut Cursive, topic_name: &str) {
