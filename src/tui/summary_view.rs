@@ -8,11 +8,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::formatting::format_padded;
-use crate::kafka::TopicDetails;
 use crate::tui::render_topic_view;
 use crate::Model;
 
-const CHARS_TOPIC_NAME: usize = 40;
 const CHARS_PARTITION_COUNT: usize = 11;
 const CHARS_REPLICA_COUNT: usize = 9;
 const CHARS_SUM_OFFSETS: usize = 9;
