@@ -69,7 +69,7 @@ pub fn render_topic_view(siv: &mut Cursive, topic_name: &str) {
                 Canvas::wrap(
                     SelectView::new()
                         .with_all(topic_state.consumer_group_states.iter().map(
-                            |(cg_name, cg_offset_map)| {
+                            |(cg_name, _cg_offset_map)| {
                                 ("", (topic_name.to_string(), cg_name.clone()))
                             },
                         ))
