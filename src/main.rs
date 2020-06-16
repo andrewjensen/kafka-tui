@@ -8,7 +8,7 @@ mod tui;
 use kafka::{
     fetch_cluster_metadata, fetch_consumer_offset_state, ClusterConsumerOffsetState, ClusterSummary,
 };
-use tui::render_summary_view;
+use tui::{create_theme, render_summary_view};
 
 pub const MOCK_BROKERS: &str = "localhost:9092";
 
@@ -28,6 +28,8 @@ async fn main() {
     let cluster_cg_state = fetch_consumer_offset_state().await;
 
     let mut siv = Cursive::default();
+    let theme = create_theme(&siv);
+    siv.set_theme(theme);
 
     let model_data = ModelData {
         cluster_summary: cluster_summary,
@@ -37,7 +39,14 @@ async fn main() {
 
     siv.set_user_data(Arc::clone(&model));
 
-    siv.add_global_callback('q', |s| s.quit());
+    siv.add_global_callback('q', |s| {
+        let remaining_layers = s.screen().len();
+        if remaining_layers == 1 {
+            s.quit();
+        } else {
+            s.pop_layer().unwrap();
+        }
+    });
 
     render_summary_view(&mut siv);
 
