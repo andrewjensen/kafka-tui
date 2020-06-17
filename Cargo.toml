@@ -24,5 +24,7 @@ byteorder = "1"
 clap = "2"
 cursive = "0.14"
 futures = "0.3"
+fuzzy-matcher = "0.3"
+lazy_static = "1"
 rdkafka = "0.23"
 tokio = { version = "0.2", features = ["blocking", "macros", "rt-core", "time"] }

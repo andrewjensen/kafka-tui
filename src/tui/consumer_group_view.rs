@@ -3,8 +3,8 @@ use cursive::views::{DummyView, LinearLayout, ResizedView, ScrollView, TextView}
 use cursive::Cursive;
 use std::sync::Arc;
 
-use crate::formatting::format_padded;
 use crate::kafka::OffsetMap;
+use crate::text_utils::format_padded;
 use crate::Model;
 
 const CHARS_PARTITION_ID: usize = 10;

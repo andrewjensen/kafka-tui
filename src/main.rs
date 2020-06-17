@@ -1,8 +1,11 @@
+#[macro_use]
+extern crate lazy_static;
+
 use cursive::Cursive;
 use std::sync::{Arc, Mutex};
 
-mod formatting;
 mod kafka;
+mod text_utils;
 mod tui;
 
 use kafka::{

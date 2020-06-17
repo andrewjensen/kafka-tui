@@ -7,8 +7,8 @@ use cursive::Cursive;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::formatting::format_padded;
 use crate::kafka::{OffsetMap, TopicDetails};
+use crate::text_utils::format_padded;
 use crate::tui::render_consumer_group_view;
 use crate::Model;
 
