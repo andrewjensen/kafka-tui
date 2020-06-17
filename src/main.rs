@@ -11,7 +11,7 @@ mod tui;
 use kafka::{
     fetch_cluster_metadata, fetch_consumer_offset_state, ClusterConsumerOffsetState, ClusterSummary,
 };
-use tui::{create_theme, render_summary_view};
+use tui::{create_theme, render_help_view, render_summary_view};
 
 pub const MOCK_BROKERS: &str = "localhost:9092";
 
@@ -49,6 +49,10 @@ async fn main() {
         } else {
             s.pop_layer().unwrap();
         }
+    });
+
+    siv.add_global_callback('?', |s| {
+        render_help_view(s);
     });
 
     render_summary_view(&mut siv);

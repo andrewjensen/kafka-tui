@@ -90,7 +90,12 @@ pub fn render_summary_view(siv: &mut Cursive) {
 
     let summary_view = ResizedView::with_full_screen(
         LinearLayout::vertical()
-            .child(TextView::new("Cluster").effect(Effect::Bold))
+            .child(
+                LinearLayout::horizontal()
+                    .child(TextView::new("Cluster").effect(Effect::Bold))
+                    .child(ResizedView::with_full_width(DummyView))
+                    .child(TextView::new("Type `?` for help").effect(Effect::Bold)),
+            )
             .child(TextView::new(format_cluster_summary(
                 topic_names.len(),
                 model_inner.cluster_summary.brokers.len(),
